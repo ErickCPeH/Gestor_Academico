@@ -30,6 +30,7 @@ Para mantener una separación clara de responsabilidades y asegurar que el repos
 gestion-academica-uvm/
 ├── docs/                             # Documentación y contratos de la API
 │   └── GestionAcademica.yaml         # Contrato OpenAPI 3.0.0 original
+|   └── creacion_DB.sql               # Query de sql server para crear la DB
 ├── src/                              # Código fuente de la aplicación
 │   ├── config/
 │   │   └── database.js               # Conexión y Pool de SQL Server
