@@ -85,7 +85,7 @@ function calcularEstatusAcademico(evaluacion, asistencias) {
   const promedio = (teoria_10 * wTeoria) + (laboratorio_40 * wLab) + (blackboard_50 * wBb);
   
   let estatus = "Regular";
-  if (promedio < 6.0) {
+  if (promedio < 7.0) {
     estatus = "Reprobado o Presenta Examen Final";
   }
 
