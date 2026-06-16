@@ -1,6 +1,6 @@
 # API de Gestión Académica - UVM
 
-API robusta desarrollada en Node.js y Express para la administración, evaluación continua y control de asistencia de estudiantes en la Universidad del Valle de México[cite: 78, 149]. El proyecto implementa un diseño profesional basado en contratos de API (OpenAPI/Swagger), seguridad basada en tokens JWT y almacenamiento en SQL Server con soporte para bajas lógicas (soft deletes).
+API robusta desarrollada en Node.js y Express para la administración, evaluación continua y control de asistencia de estudiantes en la Universidad del Valle de México. El proyecto implementa un diseño profesional basado en contratos de API (OpenAPI/Swagger), seguridad basada en tokens JWT y almacenamiento en SQL Server con soporte para bajas lógicas (soft deletes).
 
 ---
 
@@ -16,9 +16,9 @@ Este proyecto fue diseñado y desarrollado por:
 ## 🚀 Arquitectura y Tecnologías
 * **Backend:** Node.js con el framework Express.
 * **Base de Datos:** Microsoft SQL Server (migrado desde SQLite en memoria para entornos de producción).
-* **Autenticación:** JSON Web Tokens (JWT) con estrategia Bearer Auth[cite: 149].
+* **Autenticación:** JSON Web Tokens (JWT) con estrategia Bearer Auth.
 * **Gestión de Entorno:** Dotenv para la carga dinámica de configuraciones y ponderaciones institucionales.
-* **Documentación:** Contrato de API estandarizado bajo la especificación OpenAPI 3.0.0[cite: 79].
+* **Documentación:** Contrato de API estandarizado bajo la especificación OpenAPI 3.0.0.
 
 ---
 
