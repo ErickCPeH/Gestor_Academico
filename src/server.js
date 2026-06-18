@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const db = require('./database'); // Archivo que exporta { sql, poolPromise }
+const db = require('./config/database'); // Archivo que exporta { sql, poolPromise }
 
 const app = express();
 app.use(express.json());
