@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ interface AddStudentModalProps {
   onClose: () => void;
   onSubmit: (student: Omit<Student, "id">) => void;
   onError: () => void;
+  studentToEdit?: Student | null;
 }
 
 export function AddStudentModal({
@@ -24,12 +25,14 @@ export function AddStudentModal({
   onClose,
   onSubmit,
   onError,
+  studentToEdit,
 }: AddStudentModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     matricula: "",
     subject: "",
     cycle: "",
+    parcial: "",
     teoria: 5,
     laboratorio: 5,
     blackboard: 5,
@@ -37,29 +40,45 @@ export function AddStudentModal({
     allowedLimit: 6,
   });
 
+  useEffect(() => {
+    if (studentToEdit && isOpen) {
+      setFormData({
+        name: studentToEdit.name,
+        matricula: studentToEdit.matricula,
+        subject: studentToEdit.subject,
+        cycle: "",
+        parcial: studentToEdit.parcial || "",
+        teoria: 5,
+        laboratorio: 5,
+        blackboard: 5,
+        absences: studentToEdit.absences,
+        allowedLimit: 6,
+      });
+    } else if (isOpen && !studentToEdit) {
+      handleReset();
+    }
+  }, [studentToEdit, isOpen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate evaluations are between 0 and 10
     if (
-      formData.teoria <= 0 ||
-      formData.teoria >= 10 ||
-      formData.laboratorio <= 0 ||
-      formData.laboratorio >= 10 ||
-      formData.blackboard <= 0 ||
-      formData.blackboard >= 10
+      formData.teoria < 0 ||
+      formData.teoria > 10 ||
+      formData.laboratorio < 0 ||
+      formData.laboratorio > 10 ||
+      formData.blackboard < 0 ||
+      formData.blackboard > 10
     ) {
       onError();
       return;
     }
 
-    // Calculate partial average based on weights
     const partialAverage =
       formData.teoria * 0.1 +
       formData.laboratorio * 0.4 +
       formData.blackboard * 0.5;
 
-    // Determine status based on absences
     const status =
       formData.absences > formData.allowedLimit
         ? "Reprobado por Faltas"
@@ -69,6 +88,7 @@ export function AddStudentModal({
       matricula: formData.matricula,
       name: formData.name,
       subject: formData.subject,
+      parcial: formData.parcial,
       absences: formData.absences,
       partialAverage,
       status: status as "Regular" | "Reprobado por Faltas",
@@ -84,6 +104,7 @@ export function AddStudentModal({
       matricula: "",
       subject: "",
       cycle: "",
+      parcial: "",
       teoria: 5,
       laboratorio: 5,
       blackboard: 5,
@@ -98,17 +119,16 @@ export function AddStudentModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleCancel}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl text-[#2C2C2C]">
-            Agregar Nuevo Estudiante
+            {studentToEdit ? "Editar Estudiante" : "Agregar Nuevo Estudiante"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-6 py-4">
-            {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#2C2C2C]">
                 Información Básica
@@ -166,10 +186,22 @@ export function AddStudentModal({
                     className="bg-[#F9F9F9] border-[#D0D0D0]"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="parcial">Parcial</Label>
+                  <Input
+                    id="parcial"
+                    value={formData.parcial}
+                    onChange={(e) =>
+                      setFormData({ ...formData, parcial: e.target.value })
+                    }
+                    placeholder="Inserta Número del Parcial"
+                    required
+                    className="bg-[#F9F9F9] border-[#D0D0D0]"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Evaluación Continua */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#2C2C2C]">
                 Evaluación Continua
@@ -237,7 +269,6 @@ export function AddStudentModal({
               </div>
             </div>
 
-            {/* Asistencias */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#2C2C2C]">Asistencias</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -290,7 +321,7 @@ export function AddStudentModal({
               type="submit"
               className="bg-[#DC143C] hover:bg-[#B01030] text-white"
             >
-              Calcular y Guardar
+              {studentToEdit ? "Guardar Cambios" : "Calcular y Guardar"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import {
@@ -18,14 +18,43 @@ export function Students() {
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
-  const handleAddStudent = (newStudent: Omit<Student, "id">) => {
-    const student: Student = {
-      ...newStudent,
-      id: students.length + 1,
-    };
-    setStudents([...students, student]);
+  const handleSaveStudent = (studentData: Omit<Student, "id">) => {
+    if (editingStudent) {
+      setStudents(
+        students.map((s) =>
+          s.id === editingStudent.id ? { ...studentData, id: s.id } : s,
+        ),
+      );
+    } else {
+      const newStudent: Student = {
+        ...studentData,
+        id:
+          students.length > 0 ? Math.max(...students.map((s) => s.id)) + 1 : 1,
+      };
+      setStudents([...students, newStudent]);
+    }
+    handleCloseModal();
+  };
+
+  const handleDeleteStudent = (id: number) => {
+    const confirmed = window.confirm(
+      "¿Estás seguro de que deseas eliminar a este estudiante?",
+    );
+    if (confirmed) {
+      setStudents(students.filter((s) => s.id !== id));
+    }
+  };
+
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingStudent(null);
   };
 
   const handleError = () => {
@@ -40,12 +69,13 @@ export function Students() {
           <h1 className="text-3xl font-semibold text-[#2C2C2C] mb-2">
             UVM - Dashboard de Control Académico
           </h1>
-          <p className="text-[#5A5A5A]">
-            Gestión y seguimiento de estudiantes
-          </p>
+          <p className="text-[#5A5A5A]">Gestión y seguimiento de estudiantes</p>
         </div>
         <Button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingStudent(null);
+            setIsModalOpen(true);
+          }}
           className="bg-[#DC143C] hover:bg-[#B01030] text-white"
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -78,7 +108,7 @@ export function Students() {
           <p className="text-2xl font-semibold text-[#2C2C2C]">
             {(
               students.reduce((acc, s) => acc + s.partialAverage, 0) /
-              students.length
+              (students.length || 1)
             ).toFixed(1)}
           </p>
         </div>
@@ -103,10 +133,16 @@ export function Students() {
                 Faltas
               </TableHead>
               <TableHead className="text-[#2C2C2C] font-semibold">
+                Parcial
+              </TableHead>
+              <TableHead className="text-[#2C2C2C] font-semibold">
                 Promedio Parcial
               </TableHead>
               <TableHead className="text-[#2C2C2C] font-semibold">
                 Estatus
+              </TableHead>
+              <TableHead className="text-[#2C2C2C] font-semibold text-center">
+                Acciones
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -131,6 +167,9 @@ export function Students() {
                   </span>
                 </TableCell>
                 <TableCell className="text-[#2C2C2C]">
+                  {student.parcial}
+                </TableCell>
+                <TableCell className="text-[#2C2C2C]">
                   {student.partialAverage.toFixed(1)}
                 </TableCell>
                 <TableCell>
@@ -144,21 +183,40 @@ export function Students() {
                     {student.status}
                   </Badge>
                 </TableCell>
+                <TableCell className="text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[#5A5A5A] hover:text-[#2C2C2C] hover:bg-[#F0F0F0]"
+                      onClick={() => handleEditStudent(student)}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[#DC143C] hover:text-[#B01030] hover:bg-[#FDF2F4]"
+                      onClick={() => handleDeleteStudent(student.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* Add Student Modal */}
       <AddStudentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddStudent}
+        onClose={handleCloseModal}
+        onSubmit={handleSaveStudent}
         onError={handleError}
+        studentToEdit={editingStudent}
       />
 
-      {/* Error Alert */}
       {showError && <ErrorAlert onClose={() => setShowError(false)} />}
     </div>
   );
