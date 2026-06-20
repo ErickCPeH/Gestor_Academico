@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 1. Base de Datos compatible con ARM64
+  sqlserver:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: sql_server_db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD="TuPasswordSeguroUVM2026#"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    ports:
+      - "1433:1433"
+    restart: always
+
+  # 2. API Node.js (Backend)
+  node_app:
+    build: ./api
+    container_name: node_service
+    environment:
+      - PORT=3000
+      - DB_HOST=sqlserver
+      - DB_PASSWORD="TuPasswordSeguroUVM2026#"
+      - JWT_SECRET=ClaveSecretaSuperSeguraUVM2026
+      - PESO_TEORIA=0.10
+      - PESO_LABORATORIO=0.40
+      - PESO_BLACKBOARD=0.50
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    restart: always
+    depends_on:
+      - sqlserver
+
+  # 3. Tu nuevo Frontend Avanzado (Construye Vite y levanta Nginx)
+  frontend:
+    build: ./frontend
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+    restart: always
+    volumes:
+      # 🎯 ESTA LÍNEA ES LA CLAVE: Inyecta el nginx.conf de la raíz al contenedor
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - node_app
+
+volumes:
+  mssql_data:
