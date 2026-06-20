@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Filter } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import {
@@ -19,6 +19,12 @@ export function Students() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showError, setShowError] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [filtroParcial, setFiltroParcial] = useState<string>("Todos");
+
+  const estudiantesFiltrados =
+    filtroParcial === "Todos"
+      ? students
+      : students.filter((student) => student.parcial === filtroParcial);
 
   const handleSaveStudent = (studentData: Omit<Student, "id">) => {
     if (editingStudent) {
@@ -71,16 +77,36 @@ export function Students() {
           </h1>
           <p className="text-[#5A5A5A]">Gestión y seguimiento de estudiantes</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingStudent(null);
-            setIsModalOpen(true);
-          }}
-          className="bg-[#DC143C] hover:bg-[#B01030] text-white"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Agregar Estudiante
-        </Button>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-md border border-[#E0E0E0] shadow-sm">
+            <Filter className="w-4 h-4 text-[#5A5A5A]" />
+            <span className="text-sm font-medium text-[#2C2C2C]">
+              Parcialidad:
+            </span>
+            <select
+              value={filtroParcial}
+              onChange={(e) => setFiltroParcial(e.target.value)}
+              className="text-sm bg-transparent border-none outline-none text-[#2C2C2C] cursor-pointer font-semibold"
+            >
+              <option value="Todos">Todos</option>
+              <option value="1">Parcial 1</option>
+              <option value="2">Parcial 2</option>
+              <option value="3">Parcial 3</option>
+            </select>
+          </div>
+
+          <Button
+            onClick={() => {
+              setEditingStudent(null);
+              setIsModalOpen(true);
+            }}
+            className="bg-[#DC143C] hover:bg-[#B01030] text-white"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Agregar Estudiante
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -88,27 +114,33 @@ export function Students() {
         <div className="bg-white p-4 rounded-lg border border-[#E0E0E0] shadow-sm">
           <p className="text-sm text-[#5A5A5A] mb-1">Total Estudiantes</p>
           <p className="text-2xl font-semibold text-[#2C2C2C]">
-            {students.length}
+            {estudiantesFiltrados.length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-[#E0E0E0] shadow-sm">
           <p className="text-sm text-[#5A5A5A] mb-1">Regulares</p>
           <p className="text-2xl font-semibold text-[#22C55E]">
-            {students.filter((s) => s.status === "Regular").length}
+            {estudiantesFiltrados.filter((s) => s.status === "Regular").length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-[#E0E0E0] shadow-sm">
           <p className="text-sm text-[#5A5A5A] mb-1">Reprobados por Faltas</p>
           <p className="text-2xl font-semibold text-[#DC143C]">
-            {students.filter((s) => s.status === "Reprobado por Faltas").length}
+            {
+              estudiantesFiltrados.filter(
+                (s) => s.status === "Reprobado por Faltas",
+              ).length
+            }
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-[#E0E0E0] shadow-sm">
           <p className="text-sm text-[#5A5A5A] mb-1">Promedio General</p>
           <p className="text-2xl font-semibold text-[#2C2C2C]">
             {(
-              students.reduce((acc, s) => acc + s.partialAverage, 0) /
-              (students.length || 1)
+              estudiantesFiltrados.reduce(
+                (acc, s) => acc + s.partialAverage,
+                0,
+              ) / (estudiantesFiltrados.length || 1)
             ).toFixed(1)}
           </p>
         </div>
@@ -147,64 +179,80 @@ export function Students() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {students.map((student) => (
-              <TableRow key={student.id} className="hover:bg-[#F9F9F9]">
-                <TableCell className="text-[#2C2C2C]">{student.id}</TableCell>
-                <TableCell className="font-medium text-[#2C2C2C]">
-                  {student.matricula}
-                </TableCell>
-                <TableCell className="text-[#2C2C2C]">{student.name}</TableCell>
-                <TableCell className="text-[#5A5A5A]">
-                  {student.subject}
-                </TableCell>
-                <TableCell className="text-[#2C2C2C]">
-                  <span
-                    className={
-                      student.absences > 5 ? "text-[#DC143C] font-semibold" : ""
-                    }
-                  >
-                    {student.absences}
-                  </span>
-                </TableCell>
-                <TableCell className="text-[#2C2C2C]">
-                  {student.parcial}
-                </TableCell>
-                <TableCell className="text-[#2C2C2C]">
-                  {student.partialAverage.toFixed(1)}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    className={
-                      student.status === "Regular"
-                        ? "bg-[#22C55E] hover:bg-[#16A34A] text-white"
-                        : "bg-[#DC143C] hover:bg-[#B01030] text-white"
-                    }
-                  >
-                    {student.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-[#5A5A5A] hover:text-[#2C2C2C] hover:bg-[#F0F0F0]"
-                      onClick={() => handleEditStudent(student)}
+            {estudiantesFiltrados.length > 0 ? (
+              estudiantesFiltrados.map((student) => (
+                <TableRow key={student.id} className="hover:bg-[#F9F9F9]">
+                  <TableCell className="text-[#2C2C2C]">{student.id}</TableCell>
+                  <TableCell className="font-medium text-[#2C2C2C]">
+                    {student.matricula}
+                  </TableCell>
+                  <TableCell className="text-[#2C2C2C]">
+                    {student.name}
+                  </TableCell>
+                  <TableCell className="text-[#5A5A5A]">
+                    {student.subject}
+                  </TableCell>
+                  <TableCell className="text-[#2C2C2C]">
+                    <span
+                      className={
+                        student.absences > 5
+                          ? "text-[#DC143C] font-semibold"
+                          : ""
+                      }
                     >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-[#DC143C] hover:text-[#B01030] hover:bg-[#FDF2F4]"
-                      onClick={() => handleDeleteStudent(student.id)}
+                      {student.absences}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-[#2C2C2C]">
+                    {student.parcial}
+                  </TableCell>
+                  <TableCell className="text-[#2C2C2C]">
+                    {student.partialAverage.toFixed(1)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        student.status === "Regular"
+                          ? "bg-[#22C55E] hover:bg-[#16A34A] text-white"
+                          : "bg-[#DC143C] hover:bg-[#B01030] text-white"
+                      }
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                      {student.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-[#5A5A5A] hover:text-[#2C2C2C] hover:bg-[#F0F0F0]"
+                        onClick={() => handleEditStudent(student)}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-[#DC143C] hover:text-[#B01030] hover:bg-[#FDF2F4]"
+                        onClick={() => handleDeleteStudent(student.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={9}
+                  className="text-center py-8 text-[#5A5A5A]"
+                >
+                  No existen estudiantes registrados en la parcialidad
+                  seleccionada.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
@@ -215,6 +263,7 @@ export function Students() {
         onSubmit={handleSaveStudent}
         onError={handleError}
         studentToEdit={editingStudent}
+        students={students} // Enviamos el arreglo de alumnos para la validación interna
       />
 
       {showError && <ErrorAlert onClose={() => setShowError(false)} />}

@@ -18,6 +18,7 @@ interface AddStudentModalProps {
   onSubmit: (student: Omit<Student, "id">) => void;
   onError: () => void;
   studentToEdit?: Student | null;
+  students: Student[]; // Propiedad para recibir la lista global de alumnos
 }
 
 export function AddStudentModal({
@@ -26,6 +27,7 @@ export function AddStudentModal({
   onSubmit,
   onError,
   studentToEdit,
+  students,
 }: AddStudentModalProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -39,6 +41,8 @@ export function AddStudentModal({
     absences: 0,
     allowedLimit: 6,
   });
+
+  const [isExistingStudent, setIsExistingStudent] = useState(false);
 
   useEffect(() => {
     if (studentToEdit && isOpen) {
@@ -54,10 +58,35 @@ export function AddStudentModal({
         absences: studentToEdit.absences,
         allowedLimit: 6,
       });
+      setIsExistingStudent(true);
     } else if (isOpen && !studentToEdit) {
       handleReset();
     }
   }, [studentToEdit, isOpen]);
+
+  // Función para manejar el cambio de matrícula y buscar al estudiante
+  const handleMatriculaChange = (matriculaValor: string) => {
+    setFormData((prev) => {
+      const newFormData = { ...prev, matricula: matriculaValor };
+
+      // Solo buscamos si no estamos en modo edición
+      if (!studentToEdit) {
+        const alumnoEncontrado = students.find(
+          (s) =>
+            s.matricula.trim().toLowerCase() ===
+            matriculaValor.trim().toLowerCase(),
+        );
+
+        if (alumnoEncontrado) {
+          newFormData.name = alumnoEncontrado.name;
+          setIsExistingStudent(true);
+        } else {
+          setIsExistingStudent(false);
+        }
+      }
+      return newFormData;
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +140,7 @@ export function AddStudentModal({
       absences: 0,
       allowedLimit: 6,
     });
+    setIsExistingStudent(false);
   };
 
   const handleCancel = () => {
@@ -135,6 +165,17 @@ export function AddStudentModal({
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="matricula">Matrícula</Label>
+                  <Input
+                    id="matricula"
+                    value={formData.matricula}
+                    onChange={(e) => handleMatriculaChange(e.target.value)}
+                    placeholder="2024-XXX"
+                    required
+                    className="bg-[#F9F9F9] border-[#D0D0D0]"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="name">Nombre del Estudiante</Label>
                   <Input
                     id="name"
@@ -144,21 +185,19 @@ export function AddStudentModal({
                     }
                     placeholder="Nombre completo"
                     required
-                    className="bg-[#F9F9F9] border-[#D0D0D0]"
+                    disabled={isExistingStudent && !studentToEdit}
+                    className={`border-[#D0D0D0] ${
+                      isExistingStudent && !studentToEdit
+                        ? "bg-[#EAEAEA] text-[#5A5A5A]"
+                        : "bg-[#F9F9F9]"
+                    }`}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="matricula">Matrícula</Label>
-                  <Input
-                    id="matricula"
-                    value={formData.matricula}
-                    onChange={(e) =>
-                      setFormData({ ...formData, matricula: e.target.value })
-                    }
-                    placeholder="2024-XXX"
-                    required
-                    className="bg-[#F9F9F9] border-[#D0D0D0]"
-                  />
+                  {isExistingStudent && !studentToEdit && (
+                    <p className="text-xs text-[#22C55E] font-medium mt-1">
+                      Estudiante detectado en el sistema empresarial. Nombre
+                      vinculado automáticamente.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Materia</Label>
