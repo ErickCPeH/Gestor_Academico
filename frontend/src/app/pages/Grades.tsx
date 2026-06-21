@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { Plus } from "lucide-react";
+import { mockMateria, Materia } from "../data/materias";
+import { mockStudents, Student } from "../data/students";
 import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { AddMateriaModal } from "../components/AddMateriaModal";
 import {
   Table,
   TableBody,
@@ -9,135 +13,107 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { ErrorAlert } from "../components/ErrorAlert";
 
 export function Grades() {
-  const navigate = useNavigate();
-  const [students, setStudents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showError, setShowError] = useState(false);
+  // Inicializa materias desde LocalStorage o usa el mock por defecto
+  const [materias, setMaterias] = useState<Materia[]>(() => {
+    const localData = localStorage.getItem("uvm_materias");
+    return localData ? JSON.parse(localData) : mockMateria;
+  });
 
-  // Ahora la "materia" es simplemente el texto de la asignatura
-  const [materiaSeleccionada, setMateriaSeleccionada] = useState<string | null>(
-    null,
-  );
+  // Carga la lista sincrónica de alumnos reales modificada en la otra pestaña
+  const [students] = useState<Student[]>(() => {
+    const localData = localStorage.getItem("uvm_students");
+    return localData ? JSON.parse(localData) : mockStudents;
+  });
+
+  const [materiaSeleccionada, setMateriaSeleccionada] =
+    useState<Materia | null>(null);
   const [parcialSeleccionado, setParcialSeleccionado] = useState<string | null>(
     null,
   );
+  const [isMateriaModalOpen, setIsMateriaModalOpen] = useState(false);
 
   const parcialidades = ["1", "2", "3"];
 
-  // Helpers de sesión (mismos que en Students)
-  const getToken = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return null;
-    }
-    return token;
-  };
-
-  const handleUnauthorized = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
-  // Solo necesitamos los estudiantes; las materias salen de ellos
+  // Guarda materias en LocalStorage cada vez que se agregue una nueva
   useEffect(() => {
-    const fetchStudents = async () => {
-      const token = getToken();
-      if (!token) return;
+    localStorage.setItem("uvm_materias", JSON.stringify(materias));
+  }, [materias]);
 
-      try {
-        const response = await fetch("/api/estudiantes", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.status === 401) {
-          handleUnauthorized();
-          return;
-        }
-
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-
-        const data = await response.json();
-        setStudents(data);
-      } catch (error) {
-        console.error("Error cargando calificaciones:", error);
-        setShowError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudents();
-  }, [navigate]);
-
-  // Lista de materias = valores distintos de asignatura (sin repetir, sin vacíos)
-  const materias = Array.from(
-    new Set(students.map((s) => s.asignatura).filter(Boolean)),
-  );
-
-  // Filtro por materia (asignatura exacta) y parcialidad (o todas)
+  // Filtro simultáneo consumiendo del estado sincrónico de estudiantes
   const estudiantesFiltrados =
     materiaSeleccionada && parcialSeleccionado
       ? students.filter((student) => {
-          const coincideMateria = student.asignatura === materiaSeleccionada;
+          const coincideMateria = student.subject
+            .toLowerCase()
+            .includes(
+              materiaSeleccionada.Nombre_Materia.toLowerCase().replace(
+                "bases",
+                "base",
+              ),
+            );
           const coincideParcial =
             parcialSeleccionado === "Todas"
               ? true
-              : String(student.parcial) === parcialSeleccionado;
+              : student.parcial === parcialSeleccionado;
           return coincideMateria && coincideParcial;
         })
       : [];
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center text-[#5A5A5A]">
-        Cargando calificaciones...
-      </div>
-    );
-  }
+  const handleSaveMateria = (nuevaMateria: Omit<Materia, "id_materia">) => {
+    const materiaCompleta: Materia = {
+      ...nuevaMateria,
+      id_materia:
+        materias.length > 0
+          ? Math.max(...materias.map((m) => m.id_materia)) + 1
+          : 1,
+    };
+    setMaterias([...materias, materiaCompleta]);
+    setIsMateriaModalOpen(false);
+  };
 
   return (
     <div className="p-8">
       {/* Encabezado Principal */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-[#2C2C2C] mb-2">
-          Calificaciones
-        </h1>
-        <p className="text-[#5A5A5A]">
-          Gestión y seguimiento de evaluaciones por materia y parcialidad
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-[#2C2C2C] mb-2">
+            Calificaciones
+          </h1>
+          <p className="text-[#5A5A5A]">
+            Gestión y seguimiento de evaluaciones por materia y parcialidad
+          </p>
+        </div>
+
+        {!materiaSeleccionada && (
+          <Button
+            onClick={() => setIsMateriaModalOpen(true)}
+            className="bg-[#DC143C] hover:bg-[#B01030] text-white"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Agregar Materia
+          </Button>
+        )}
       </div>
 
       {/* PASO 1: Grid de Selección de Materias */}
       {!materiaSeleccionada && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {materias.length > 0 ? (
-            materias.map((asignatura) => (
-              <div
-                key={asignatura}
-                onClick={() => setMateriaSeleccionada(asignatura)}
-                className="bg-white p-6 rounded-lg border border-[#E0E0E0] shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-[#DC143C]"
-              >
-                <h3 className="text-xl font-semibold text-[#2C2C2C] mb-2">
-                  {asignatura}
-                </h3>
-                <p className="text-sm text-[#5A5A5A]">
-                  Seleccionar materia para elegir parcialidad
-                </p>
-              </div>
-            ))
-          ) : (
-            <p className="text-[#5A5A5A]">
-              No hay materias registradas todavía.
-            </p>
-          )}
+          {materias.map((materia) => (
+            <div
+              key={materia.id_materia}
+              onClick={() => setMateriaSeleccionada(materia)}
+              className="bg-white p-6 rounded-lg border border-[#E0E0E0] shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-[#DC143C]"
+            >
+              <h3 className="text-xl font-semibold text-[#2C2C2C] mb-2">
+                {materia.Nombre_Materia}
+              </h3>
+              <p className="text-sm text-[#5A5A5A]">
+                Seleccionar materia para elegir parcialidad
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
@@ -146,7 +122,10 @@ export function Grades() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-[#2C2C2C]">
-              Materia: <span className="text-[#DC143C]">{materiaSeleccionada}</span>
+              Materia:{" "}
+              <span className="text-[#DC143C]">
+                {materiaSeleccionada.Nombre_Materia}
+              </span>
             </h2>
             <button
               onClick={() => setMateriaSeleccionada(null)}
@@ -170,7 +149,6 @@ export function Grades() {
                   Parcial {parcial}
                 </button>
               ))}
-              {/* Botón para consultar todas las parcialidades juntas */}
               <button
                 onClick={() => setParcialSeleccionado("Todas")}
                 className="bg-white p-6 text-center border border-[#E0E0E0] rounded-lg shadow-sm hover:border-[#DC143C] hover:bg-[#FDF2F4] text-lg font-semibold text-[#2C2C2C] transition-all"
@@ -182,14 +160,16 @@ export function Grades() {
         </div>
       )}
 
-      {/* PASO 3: Tabla de Estudiantes Filtrada por Materia y Parcial */}
+      {/* PASO 3: Tabla de Estudiantes Filtrada */}
       {materiaSeleccionada && parcialSeleccionado && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-[#2C2C2C]">
                 Materia:{" "}
-                <span className="text-[#DC143C]">{materiaSeleccionada}</span>
+                <span className="text-[#DC143C]">
+                  {materiaSeleccionada.Nombre_Materia}
+                </span>
               </h2>
               <p className="text-sm text-[#5A5A5A] mt-1">
                 {parcialSeleccionado === "Todas"
@@ -237,37 +217,34 @@ export function Grades() {
                         {student.matricula}
                       </TableCell>
                       <TableCell className="text-[#2C2C2C]">
-                        {student.nombre}
+                        {student.name}
                       </TableCell>
                       <TableCell className="text-[#2C2C2C]">
                         <span
                           className={
-                            student.faltas_totales > 5
+                            student.absences > 5
                               ? "text-[#DC143C] font-semibold"
                               : ""
                           }
                         >
-                          {student.faltas_totales ?? 0}
+                          {student.absences}
                         </span>
                       </TableCell>
                       <TableCell className="text-[#2C2C2C]">
                         {student.parcial}
                       </TableCell>
                       <TableCell className="text-[#2C2C2C]">
-                        {student.promedio_parcial
-                          ? Number(student.promedio_parcial).toFixed(1)
-                          : "0.0"}
+                        {student.partialAverage.toFixed(1)}
                       </TableCell>
                       <TableCell>
                         <Badge
                           className={
-                            student.estatus === "Regular" ||
-                            student.estatus === "regular"
+                            student.status === "Regular"
                               ? "bg-[#22C55E] hover:bg-[#16A34A] text-white"
                               : "bg-[#DC143C] hover:bg-[#B01030] text-white"
                           }
                         >
-                          {student.estatus}
+                          {student.status}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -289,9 +266,12 @@ export function Grades() {
         </div>
       )}
 
-      {showError && <ErrorAlert onClose={() => setShowError(false)} />}
+      {/* Componente Modal para la Inserción de Materias */}
+      <AddMateriaModal
+        isOpen={isMateriaModalOpen}
+        onClose={() => setIsMateriaModalOpen(false)}
+        onSubmit={handleSaveMateria}
+      />
     </div>
   );
 }
-
-

@@ -4,6 +4,7 @@ export interface Student {
   name: string;
   subject: string;
   absences: number;
+  parcial: string;
   partialAverage: number;
   status: "Regular" | "Reprobado por Faltas";
 }
@@ -15,6 +16,7 @@ export const mockStudents: Student[] = [
     name: "Ana García Martínez",
     subject: "Programación Avanzada",
     absences: 2,
+    parcial: "1",
     partialAverage: 8.5,
     status: "Regular",
   },
@@ -24,6 +26,7 @@ export const mockStudents: Student[] = [
     name: "Carlos Rodríguez López",
     subject: "Base de Datos",
     absences: 8,
+    parcial: "1",
     partialAverage: 6.2,
     status: "Reprobado por Faltas",
   },
@@ -33,6 +36,7 @@ export const mockStudents: Student[] = [
     name: "María Elena Fernández",
     subject: "Programación Avanzada",
     absences: 1,
+    parcial: "1",
     partialAverage: 9.2,
     status: "Regular",
   },
@@ -42,6 +46,7 @@ export const mockStudents: Student[] = [
     name: "José Luis Hernández",
     subject: "Sistemas Operativos",
     absences: 3,
+    parcial: "1",
     partialAverage: 7.8,
     status: "Regular",
   },
@@ -51,6 +56,7 @@ export const mockStudents: Student[] = [
     name: "Laura Patricia Sánchez",
     subject: "Ingeniería de Software",
     absences: 0,
+    parcial: "1",
     partialAverage: 9.5,
     status: "Regular",
   },
@@ -60,6 +66,7 @@ export const mockStudents: Student[] = [
     name: "Roberto Martínez Díaz",
     subject: "Base de Datos",
     absences: 7,
+    parcial: "1",
     partialAverage: 5.8,
     status: "Reprobado por Faltas",
   },
@@ -69,6 +76,7 @@ export const mockStudents: Student[] = [
     name: "Patricia Gómez Ruiz",
     subject: "Redes de Computadoras",
     absences: 2,
+    parcial: "1",
     partialAverage: 8.7,
     status: "Regular",
   },
@@ -78,6 +86,7 @@ export const mockStudents: Student[] = [
     name: "Miguel Ángel Torres",
     subject: "Programación Avanzada",
     absences: 4,
+    parcial: "1",
     partialAverage: 7.3,
     status: "Regular",
   },

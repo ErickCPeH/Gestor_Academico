@@ -10,29 +10,16 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
+import { Student } from "../data/students";
 
 interface AddStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (student: any) => void;
-  onError: (message?: string) => void;
-  studentToEdit?: any | null;
-  students?: any[];
+  onSubmit: (student: Omit<Student, "id">) => void;
+  onError: () => void;
+  studentToEdit?: Student | null;
+  students: Student[]; // Propiedad para recibir la lista global de alumnos
 }
-
-// Estado inicial con los nombres de campo que espera el backend / la BD
-const estadoInicial = {
-  nombre: "",
-  matricula: "",
-  asignatura: "",
-  ciclo: "",
-  parcial: 1,
-  teoria_10: 5,
-  laboratorio_40: 5,
-  blackboard_50: 5,
-  faltas_totales: 0,
-  limite_permitido: 8,
-};
 
 export function AddStudentModal({
   isOpen,
@@ -42,117 +29,183 @@ export function AddStudentModal({
   studentToEdit,
   students,
 }: AddStudentModalProps) {
-  const [formData, setFormData] = useState(estadoInicial);
-  const esEdicion = Boolean(studentToEdit);
+  const [formData, setFormData] = useState({
+    name: "",
+    matricula: "",
+    subject: "",
+    cycle: "",
+    parcial: "",
+    teoria: 5,
+    laboratorio: 5,
+    blackboard: 5,
+    absences: 0,
+    allowedLimit: 6,
+  });
 
-  // Al abrir: si es edición, precargamos los datos del alumno; si no, limpiamos
+  const [isExistingStudent, setIsExistingStudent] = useState(false);
+
   useEffect(() => {
-    if (studentToEdit) {
+    if (studentToEdit && isOpen) {
       setFormData({
-        nombre: studentToEdit.nombre ?? "",
-        matricula: studentToEdit.matricula ?? "",
-        asignatura: studentToEdit.asignatura ?? "",
-        ciclo: studentToEdit.ciclo ?? "",
-        parcial: studentToEdit.parcial ?? 1,
-        teoria_10: studentToEdit.teoria_10 ?? 5,
-        laboratorio_40: studentToEdit.laboratorio_40 ?? 5,
-        blackboard_50: studentToEdit.blackboard_50 ?? 5,
-        faltas_totales: studentToEdit.faltas_totales ?? 0,
-        limite_permitido: studentToEdit.limite_permitido ?? 8,
+        name: studentToEdit.name,
+        matricula: studentToEdit.matricula,
+        subject: studentToEdit.subject,
+        cycle: "",
+        parcial: studentToEdit.parcial || "",
+        teoria: 5,
+        laboratorio: 5,
+        blackboard: 5,
+        absences: studentToEdit.absences,
+        allowedLimit: 6,
       });
-    } else {
-      setFormData(estadoInicial);
+      setIsExistingStudent(true);
+    } else if (isOpen && !studentToEdit) {
+      handleReset();
     }
   }, [studentToEdit, isOpen]);
+
+  // Función para manejar el cambio de matrícula y buscar al estudiante
+  const handleMatriculaChange = (matriculaValor: string) => {
+    setFormData((prev) => {
+      const newFormData = { ...prev, matricula: matriculaValor };
+
+      // Solo buscamos si no estamos en modo edición
+      if (!studentToEdit) {
+        const alumnoEncontrado = students.find(
+          (s) =>
+            s.matricula.trim().toLowerCase() ===
+            matriculaValor.trim().toLowerCase(),
+        );
+
+        if (alumnoEncontrado) {
+          newFormData.name = alumnoEncontrado.name;
+          setIsExistingStudent(true);
+        } else {
+          setIsExistingStudent(false);
+        }
+      }
+      return newFormData;
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validación de calificaciones: 0 a 10 INCLUSIVE (un 0 y un 10 son válidos)
-    const calificaciones = [
-      formData.teoria_10,
-      formData.laboratorio_40,
-      formData.blackboard_50,
-    ];
-    if (calificaciones.some((v) => v < 0 || v > 10)) {
-      onError("Las calificaciones deben estar entre 0 y 10.");
-      return;
-    }
-
-    // Al agregar, evitamos matrículas duplicadas (validación rápida del lado cliente)
     if (
-      !esEdicion &&
-      students?.some((s) => s.matricula === formData.matricula)
+      formData.teoria < 0 ||
+      formData.teoria > 10 ||
+      formData.laboratorio < 0 ||
+      formData.laboratorio > 10 ||
+      formData.blackboard < 0 ||
+      formData.blackboard > 10
     ) {
-      onError("Ya existe un estudiante con esa matrícula.");
+      onError();
       return;
     }
 
-    // Enviamos los campos CRUDOS. El backend calcula promedio_parcial y estatus.
-    onSubmit({
-      nombre: formData.nombre,
+    const partialAverage =
+      formData.teoria * 0.1 +
+      formData.laboratorio * 0.4 +
+      formData.blackboard * 0.5;
+
+    const status =
+      formData.absences > formData.allowedLimit
+        ? "Reprobado por Faltas"
+        : "Regular";
+
+    const student: Omit<Student, "id"> = {
       matricula: formData.matricula,
-      asignatura: formData.asignatura,
-      ciclo: formData.ciclo,
-      parcial: Number(formData.parcial),
-      teoria_10: formData.teoria_10,
-      laboratorio_40: formData.laboratorio_40,
-      blackboard_50: formData.blackboard_50,
-      faltas_totales: formData.faltas_totales,
-      limite_permitido: formData.limite_permitido,
+      name: formData.name,
+      subject: formData.subject,
+      parcial: formData.parcial,
+      absences: formData.absences,
+      partialAverage,
+      status: status as "Regular" | "Reprobado por Faltas",
+    };
+
+    onSubmit(student);
+    handleReset();
+  };
+
+  const handleReset = () => {
+    setFormData({
+      name: "",
+      matricula: "",
+      subject: "",
+      cycle: "",
+      parcial: "",
+      teoria: 5,
+      laboratorio: 5,
+      blackboard: 5,
+      absences: 0,
+      allowedLimit: 6,
     });
+    setIsExistingStudent(false);
+  };
+
+  const handleCancel = () => {
+    handleReset();
+    onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleCancel}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl text-[#2C2C2C]">
-            {esEdicion ? "Editar Estudiante" : "Agregar Nuevo Estudiante"}
+            {studentToEdit ? "Editar Estudiante" : "Agregar Nuevo Estudiante"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-6 py-4">
-            {/* Información Básica */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#2C2C2C]">
                 Información Básica
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre del Estudiante</Label>
-                  <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nombre: e.target.value })
-                    }
-                    placeholder="Nombre completo"
-                    required
-                    className="bg-[#F9F9F9] border-[#D0D0D0]"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="matricula">Matrícula</Label>
                   <Input
                     id="matricula"
                     value={formData.matricula}
-                    onChange={(e) =>
-                      setFormData({ ...formData, matricula: e.target.value })
-                    }
-                    placeholder="UVM2026XX"
+                    onChange={(e) => handleMatriculaChange(e.target.value)}
+                    placeholder="2024-XXX"
                     required
                     className="bg-[#F9F9F9] border-[#D0D0D0]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="asignatura">Materia</Label>
+                  <Label htmlFor="name">Nombre del Estudiante</Label>
                   <Input
-                    id="asignatura"
-                    value={formData.asignatura}
+                    id="name"
+                    value={formData.name}
                     onChange={(e) =>
-                      setFormData({ ...formData, asignatura: e.target.value })
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    placeholder="Nombre completo"
+                    required
+                    disabled={isExistingStudent && !studentToEdit}
+                    className={`border-[#D0D0D0] ${
+                      isExistingStudent && !studentToEdit
+                        ? "bg-[#EAEAEA] text-[#5A5A5A]"
+                        : "bg-[#F9F9F9]"
+                    }`}
+                  />
+                  {isExistingStudent && !studentToEdit && (
+                    <p className="text-xs text-[#22C55E] font-medium mt-1">
+                      Estudiante detectado en el sistema empresarial. Nombre
+                      vinculado automáticamente.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Materia</Label>
+                  <Input
+                    id="subject"
+                    value={formData.subject}
+                    onChange={(e) =>
+                      setFormData({ ...formData, subject: e.target.value })
                     }
                     placeholder="Nombre de la materia"
                     required
@@ -160,63 +213,54 @@ export function AddStudentModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ciclo">Ciclo</Label>
+                  <Label htmlFor="cycle">Ciclo</Label>
                   <Input
-                    id="ciclo"
-                    value={formData.ciclo}
+                    id="cycle"
+                    value={formData.cycle}
                     onChange={(e) =>
-                      setFormData({ ...formData, ciclo: e.target.value })
+                      setFormData({ ...formData, cycle: e.target.value })
                     }
-                    placeholder="2026-1"
+                    placeholder="2024-1"
+                    required
                     className="bg-[#F9F9F9] border-[#D0D0D0]"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="parcial">Parcial</Label>
-                  <select
+                  <Input
                     id="parcial"
                     value={formData.parcial}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        parcial: Number(e.target.value),
-                      })
+                      setFormData({ ...formData, parcial: e.target.value })
                     }
-                    className="w-full h-9 px-3 rounded-md bg-[#F9F9F9] border border-[#D0D0D0] text-[#2C2C2C] text-sm"
-                  >
-                    <option value={1}>Parcial 1</option>
-                    <option value={2}>Parcial 2</option>
-                    <option value={3}>Parcial 3</option>
-                  </select>
+                    placeholder="Inserta Número del Parcial"
+                    required
+                    className="bg-[#F9F9F9] border-[#D0D0D0]"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Evaluación Continua */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#2C2C2C]">
                 Evaluación Continua
               </h3>
-              <p className="text-xs text-[#5A5A5A] -mt-2">
-                Cada calificación va de 0 a 10. El porcentaje es solo el peso que
-                tiene en el promedio.
-              </p>
               <div className="space-y-4 bg-[#F9F9F9] p-4 rounded-lg">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="teoria_10">Teoría · peso 10%</Label>
+                    <Label htmlFor="teoria">Teoría (10%)</Label>
                     <span className="text-sm font-semibold text-[#DC143C]">
-                      {formData.teoria_10.toFixed(1)} / 10
+                      {formData.teoria.toFixed(1)}
                     </span>
                   </div>
                   <Slider
-                    id="teoria_10"
+                    id="teoria"
                     min={0}
                     max={10}
                     step={0.1}
-                    value={[formData.teoria_10]}
+                    value={[formData.teoria]}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, teoria_10: value[0] })
+                      setFormData({ ...formData, teoria: value[0] })
                     }
                     className="[&_[role=slider]]:bg-[#DC143C] [&_[role=slider]]:border-[#DC143C]"
                   />
@@ -224,19 +268,19 @@ export function AddStudentModal({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="laboratorio_40">Laboratorio · peso 40%</Label>
+                    <Label htmlFor="laboratorio">Laboratorio (40%)</Label>
                     <span className="text-sm font-semibold text-[#DC143C]">
-                      {formData.laboratorio_40.toFixed(1)} / 10
+                      {formData.laboratorio.toFixed(1)}
                     </span>
                   </div>
                   <Slider
-                    id="laboratorio_40"
+                    id="laboratorio"
                     min={0}
                     max={10}
                     step={0.1}
-                    value={[formData.laboratorio_40]}
+                    value={[formData.laboratorio]}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, laboratorio_40: value[0] })
+                      setFormData({ ...formData, laboratorio: value[0] })
                     }
                     className="[&_[role=slider]]:bg-[#DC143C] [&_[role=slider]]:border-[#DC143C]"
                   />
@@ -244,19 +288,19 @@ export function AddStudentModal({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="blackboard_50">Blackboard · peso 50%</Label>
+                    <Label htmlFor="blackboard">Blackboard (50%)</Label>
                     <span className="text-sm font-semibold text-[#DC143C]">
-                      {formData.blackboard_50.toFixed(1)} / 10
+                      {formData.blackboard.toFixed(1)}
                     </span>
                   </div>
                   <Slider
-                    id="blackboard_50"
+                    id="blackboard"
                     min={0}
                     max={10}
                     step={0.1}
-                    value={[formData.blackboard_50]}
+                    value={[formData.blackboard]}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, blackboard_50: value[0] })
+                      setFormData({ ...formData, blackboard: value[0] })
                     }
                     className="[&_[role=slider]]:bg-[#DC143C] [&_[role=slider]]:border-[#DC143C]"
                   />
@@ -264,37 +308,36 @@ export function AddStudentModal({
               </div>
             </div>
 
-            {/* Asistencias */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#2C2C2C]">Asistencias</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="faltas_totales">Número de Faltas</Label>
+                  <Label htmlFor="absences">Número de Faltas</Label>
                   <Input
-                    id="faltas_totales"
+                    id="absences"
                     type="number"
                     min="0"
-                    value={formData.faltas_totales}
+                    value={formData.absences}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        faltas_totales: parseInt(e.target.value) || 0,
+                        absences: parseInt(e.target.value) || 0,
                       })
                     }
                     className="bg-[#F9F9F9] border-[#D0D0D0]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="limite_permitido">Límite Permitido</Label>
+                  <Label htmlFor="allowedLimit">Límite Permitido</Label>
                   <Input
-                    id="limite_permitido"
+                    id="allowedLimit"
                     type="number"
                     min="0"
-                    value={formData.limite_permitido}
+                    value={formData.allowedLimit}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        limite_permitido: parseInt(e.target.value) || 0,
+                        allowedLimit: parseInt(e.target.value) || 0,
                       })
                     }
                     className="bg-[#F9F9F9] border-[#D0D0D0]"
@@ -308,7 +351,7 @@ export function AddStudentModal({
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={handleCancel}
               className="border-[#D0D0D0] text-[#2C2C2C] hover:bg-[#F9F9F9]"
             >
               Cancelar
@@ -317,7 +360,7 @@ export function AddStudentModal({
               type="submit"
               className="bg-[#DC143C] hover:bg-[#B01030] text-white"
             >
-              {esEdicion ? "Guardar Cambios" : "Calcular y Guardar"}
+              {studentToEdit ? "Guardar Cambios" : "Calcular y Guardar"}
             </Button>
           </DialogFooter>
         </form>
