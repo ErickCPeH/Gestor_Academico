@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { mockMateria, Materia } from "../data/materias";
 import { mockStudents, Student } from "../data/students";
 import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,6 +14,7 @@ import {
 } from "../components/ui/table";
 
 export function Grades() {
+  const [materias, setMaterias] = useState<Materia[]>(mockMateria);
   const [materiaSeleccionada, setMateriaSeleccionada] =
     useState<Materia | null>(null);
   const [parcialSeleccionado, setParcialSeleccionado] = useState<string | null>(
@@ -19,8 +22,6 @@ export function Grades() {
   );
 
   const parcialidades = ["1", "2", "3"];
-
-  // Filtro simultáneo por la materia activa y el número de parcialidad elegido (o todas)
   const estudiantesFiltrados =
     materiaSeleccionada && parcialSeleccionado
       ? mockStudents.filter((student) => {
@@ -40,22 +41,55 @@ export function Grades() {
         })
       : [];
 
+  // Función para agregar una nueva materia al estado
+  const handleAddMateria = () => {
+    const nombreNuevaMateria = window.prompt(
+      "Ingresa el nombre de la nueva materia:",
+    );
+
+    if (nombreNuevaMateria && nombreNuevaMateria.trim() !== "") {
+      const nuevaMateria: Materia = {
+        // Generador seguro de IDs autoincrementables
+        id_materia:
+          materias.length > 0
+            ? Math.max(...materias.map((m) => m.id_materia)) + 1
+            : 1,
+        Nombre_Materia: nombreNuevaMateria.trim(),
+      };
+
+      setMaterias([...materias, nuevaMateria]);
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Encabezado Principal */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-[#2C2C2C] mb-2">
-          Calificaciones
-        </h1>
-        <p className="text-[#5A5A5A]">
-          Gestión y seguimiento de evaluaciones por materia y parcialidad
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-[#2C2C2C] mb-2">
+            Calificaciones
+          </h1>
+          <p className="text-[#5A5A5A]">
+            Gestión y seguimiento de evaluaciones por materia y parcialidad
+          </p>
+        </div>
+
+        {/* Botón Agregar Materia: Solo visible si no se ha seleccionado ninguna materia */}
+        {!materiaSeleccionada && (
+          <Button
+            onClick={handleAddMateria}
+            className="bg-[#DC143C] hover:bg-[#B01030] text-white"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Agregar Materia
+          </Button>
+        )}
       </div>
 
-      {/* PASO 1: Grid de Selección de Materias */}
+      {/* Grid de Selección de Materias */}
       {!materiaSeleccionada && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockMateria.map((materia) => (
+          {materias.map((materia) => (
             <div
               key={materia.id_materia}
               onClick={() => setMateriaSeleccionada(materia)}
@@ -72,7 +106,7 @@ export function Grades() {
         </div>
       )}
 
-      {/* PASO 2: Selección de Parcialidad (Se activa al elegir materia pero no parcial) */}
+      {/*Selección de Parcialidad (Se activa al elegir materia pero no parcial) */}
       {materiaSeleccionada && !parcialSeleccionado && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -104,7 +138,6 @@ export function Grades() {
                   Parcial {parcial}
                 </button>
               ))}
-              {/* Botón para consultar todas las parcialidades juntas */}
               <button
                 onClick={() => setParcialSeleccionado("Todas")}
                 className="bg-white p-6 text-center border border-[#E0E0E0] rounded-lg shadow-sm hover:border-[#DC143C] hover:bg-[#FDF2F4] text-lg font-semibold text-[#2C2C2C] transition-all"
@@ -116,7 +149,7 @@ export function Grades() {
         </div>
       )}
 
-      {/* PASO 3: Tabla de Estudiantes Filtrada por Materia y Parcial */}
+      {/*Tabla de Estudiantes Filtrada por Materia y Parcial */}
       {materiaSeleccionada && parcialSeleccionado && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
