@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { mockMateria, Materia } from "../data/materias";
 import { mockStudents, Student } from "../data/students";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { AddMateriaModal } from "../components/AddMateriaModal";
 import {
   Table,
   TableBody,
@@ -14,17 +15,36 @@ import {
 } from "../components/ui/table";
 
 export function Grades() {
-  const [materias, setMaterias] = useState<Materia[]>(mockMateria);
+  // Inicializa materias desde LocalStorage o usa el mock por defecto
+  const [materias, setMaterias] = useState<Materia[]>(() => {
+    const localData = localStorage.getItem("uvm_materias");
+    return localData ? JSON.parse(localData) : mockMateria;
+  });
+
+  // Carga la lista sincrónica de alumnos reales modificada en la otra pestaña
+  const [students] = useState<Student[]>(() => {
+    const localData = localStorage.getItem("uvm_students");
+    return localData ? JSON.parse(localData) : mockStudents;
+  });
+
   const [materiaSeleccionada, setMateriaSeleccionada] =
     useState<Materia | null>(null);
   const [parcialSeleccionado, setParcialSeleccionado] = useState<string | null>(
     null,
   );
+  const [isMateriaModalOpen, setIsMateriaModalOpen] = useState(false);
 
   const parcialidades = ["1", "2", "3"];
+
+  // Guarda materias en LocalStorage cada vez que se agregue una nueva
+  useEffect(() => {
+    localStorage.setItem("uvm_materias", JSON.stringify(materias));
+  }, [materias]);
+
+  // Filtro corregido para que consuma del estado sincrónico de estudiantes del LocalStorage
   const estudiantesFiltrados =
     materiaSeleccionada && parcialSeleccionado
-      ? mockStudents.filter((student) => {
+      ? students.filter((student) => {
           const coincideMateria = student.subject
             .toLowerCase()
             .includes(
@@ -41,24 +61,16 @@ export function Grades() {
         })
       : [];
 
-  // Función para agregar una nueva materia al estado
-  const handleAddMateria = () => {
-    const nombreNuevaMateria = window.prompt(
-      "Ingresa el nombre de la nueva materia:",
-    );
-
-    if (nombreNuevaMateria && nombreNuevaMateria.trim() !== "") {
-      const nuevaMateria: Materia = {
-        // Generador seguro de IDs autoincrementables
-        id_materia:
-          materias.length > 0
-            ? Math.max(...materias.map((m) => m.id_materia)) + 1
-            : 1,
-        Nombre_Materia: nombreNuevaMateria.trim(),
-      };
-
-      setMaterias([...materias, nuevaMateria]);
-    }
+  const handleSaveMateria = (nuevaMateria: Omit<Materia, "id_materia">) => {
+    const materiaCompleta: Materia = {
+      ...nuevaMateria,
+      id_materia:
+        materias.length > 0
+          ? Math.max(...materias.map((m) => m.id_materia)) + 1
+          : 1,
+    };
+    setMaterias([...materias, materiaCompleta]);
+    setIsMateriaModalOpen(false);
   };
 
   return (
@@ -74,10 +86,9 @@ export function Grades() {
           </p>
         </div>
 
-        {/* Botón Agregar Materia: Solo visible si no se ha seleccionado ninguna materia */}
         {!materiaSeleccionada && (
           <Button
-            onClick={handleAddMateria}
+            onClick={() => setIsMateriaModalOpen(true)}
             className="bg-[#DC143C] hover:bg-[#B01030] text-white"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -86,7 +97,7 @@ export function Grades() {
         )}
       </div>
 
-      {/* Grid de Selección de Materias */}
+      {/* PASO 1: Grid de Selección de Materias */}
       {!materiaSeleccionada && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {materias.map((materia) => (
@@ -106,7 +117,7 @@ export function Grades() {
         </div>
       )}
 
-      {/*Selección de Parcialidad (Se activa al elegir materia pero no parcial) */}
+      {/* PASO 2: Selección de Parcialidad */}
       {materiaSeleccionada && !parcialSeleccionado && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -149,7 +160,7 @@ export function Grades() {
         </div>
       )}
 
-      {/*Tabla de Estudiantes Filtrada por Materia y Parcial */}
+      {/* PASO 3: Tabla de Estudiantes Filtrada */}
       {materiaSeleccionada && parcialSeleccionado && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -254,6 +265,12 @@ export function Grades() {
           </div>
         </div>
       )}
+
+      <AddMateriaModal
+        isOpen={isMateriaModalOpen}
+        onClose={() => setIsMateriaModalOpen(false)}
+        onSubmit={handleSaveMateria}
+      />
     </div>
   );
 }
