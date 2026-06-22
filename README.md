@@ -1,15 +1,50 @@
-Para ejecutar el entorno al 100, es necesario instalar docker. Una vez instalado, solo deben ejecutar un comando para levantar todo el entorno. Desconozco el comando exacto en Windows, pero en Linux utilizo el siguiente. Antes de ejecutarlo, asegúrense de estar dentro de la carpeta del proyecto.
+# 🎓 Gestor Académico - UVM
 
-Comando linux:
-docker compose up -d --build
+Plataforma integral full-stack desarrollada para la gestión de estudiantes, asignaturas y evaluaciones continuas en la Universidad del Valle de México (UVM). 
 
-Link de descarga windows:
-https://docs.docker.com/desktop/setup/install/windows-install/
+El proyecto cuenta con una arquitectura moderna cliente-servidor, con un frontend responsivo y un backend robusto protegido por autenticación JWT, todo orquestado mediante contenedores Docker para facilitar su despliegue.
 
-Todos los archivos relacionados con la creación de la base de datos y demás configuraciones se encuentran en las carpetas API y Frontend. De igual manera, les compartiré los usuarios y contraseñas para acceder a la página que ya tengo levantada.
+---
 
-Direccion: http://proyecto.ursrvr.uk o pueden usar la ip a ver pruebale http://177.226.192.68/
-Usuario: admin
-Contraseña: UvmAdmin2026!
+## 👥 Equipo de Desarrollo (Autores)
+* **Erick Pérez**
+* **Francisco Maldonado**
+* **Jorge Vargas**
+* **Paola González**
 
-Pero ojo, los cambios que ustedes hagan en su entorno local no se verán reflejados en la página. Esa instancia solo se las dejo para que puedan verificar qué funciona, qué no funciona o qué hace falta. Los cambios que ustedes realicen tengo que subirlos yo para que se vean reflejados en la página.
+---
+
+## 🚀 Tecnologías Utilizadas
+
+**Frontend:**
+* [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
+* [Tailwind CSS](https://tailwindcss.com/) para estilos utilitarios
+* TypeScript
+
+**Backend:**
+* [Node.js](https://nodejs.org/) + [Express](https://expressjs.com/)
+* Autenticación con JSON Web Tokens (JWT)
+* Controlador `mssql` para conexión a base de datos
+
+**Base de Datos e Infraestructura:**
+* Microsoft SQL Server
+* [Docker](https://www.docker.com/) & Docker Compose
+* Nginx (Servidor web y Proxy Inverso)
+
+---
+
+## 📂 Estructura del Proyecto
+
+El repositorio está dividido en dos módulos principales:
+
+```text
+Gestor_Academico/
+├── api/                  # Backend (Node.js, Express, SQL Server)
+│   ├── database.js       # Conexión y auto-migración de tablas SQL
+│   ├── server.js         # Endpoints de la API REST y lógica de negocio
+│   └── Dockerfile        # Imagen Docker del backend
+├── frontend/             # Frontend (React, Vite, Tailwind)
+│   ├── src/              # Código fuente de la interfaz gráfica
+│   └── Dockerfile        # Imagen Docker para el build de React
+├── nginx.conf            # Configuración del proxy inverso
+└── docker-compose.yml    # Orquestación de todos los servicios
