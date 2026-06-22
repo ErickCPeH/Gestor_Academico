@@ -1,14 +1,11 @@
 require('dotenv').config();
 const sql = require('mssql');
 
-// 🎯 CONFIGURACIÓN BASE. Apunta a 'master' para el arranque (bootstrap),
-//    porque master es una base del sistema que SIEMPRE existe y nos permite
-//    crear GestionAcademicaUVM si Docker la borró con un "down -v".
 const config = {
   user: 'sa',
   password: process.env.DB_PASSWORD || "TuPasswordSeguroUVM2026#",
   server: process.env.DB_HOST || 'sqlserver',
-  database: 'master', // Conexión INICIAL al sistema, solo para poder crear la BD del proyecto
+  database: 'master', 
   options: {
     encrypt: false,
     trustServerCertificate: true,
@@ -20,17 +17,30 @@ const config = {
   }
 };
 
-// Nombre de la base de datos real del proyecto
 const DB_NAME = 'GestionAcademicaUVM';
+
+
+async function conectarConReintentos(cfg, intentos = 15, esperaMs = 4000) {
+  for (let i = 1; i <= intentos; i++) {
+    try {
+      const pool = await new sql.ConnectionPool(cfg).connect();
+      return pool;
+    } catch (err) {
+      console.log(
+        `⏳ SQL Server aún no está listo (intento ${i}/${intentos}): ${err.message}. Reintentando en ${esperaMs / 1000}s...`
+      );
+      if (i === intentos) throw err;
+      await new Promise((resolve) => setTimeout(resolve, esperaMs));
+    }
+  }
+}
 
 async function inicializarBaseDeDatos() {
   try {
-    // 1. Conexión inicial a 'master' (el trampolín del sistema)
-    const pool = await new sql.ConnectionPool(config).connect();
+    const pool = await conectarConReintentos(config);
     console.log('🔌 Conectado temporalmente a master para verificar el entorno...');
 
-    // 2. Crear la base de datos del proyecto si no existe
-    //    (cubre el caso del contenedor virgen tras un "docker compose down -v")
+
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '${DB_NAME}')
       BEGIN
@@ -38,14 +48,12 @@ async function inicializarBaseDeDatos() {
       END
     `);
 
-    // 3. Cerrar la conexión temporal y reconectar ya a la base real del proyecto
     await pool.close();
 
     const configReal = { ...config, database: DB_NAME };
-    const poolReal = await new sql.ConnectionPool(configReal).connect();
+    const poolReal = await conectarConReintentos(configReal);
     console.log(`✅ ¡Conexión exitosa y estable con la base de datos: [${DB_NAME}]!`);
 
-    // 4. Crear tablas esenciales si la base está vacía
     await poolReal.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Usuarios]') AND type in (N'U'))
       BEGIN
@@ -78,10 +86,17 @@ async function inicializarBaseDeDatos() {
           estatus VARCHAR(30) DEFAULT 'Regular'
         );
       END
+
+      IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[materias]') AND type in (N'U'))
+      BEGIN
+        CREATE TABLE materias (
+          id_materia INT IDENTITY(1,1) PRIMARY KEY,
+          Nombre_Materia VARCHAR(100) NOT NULL UNIQUE
+        );
+      END
     `);
 
-    // 5. MIGRACIÓN: si la tabla 'estudiantes' YA existía sin la columna 'parcial',
-    //    la agregamos sin borrar los datos. Los alumnos actuales quedan en el Parcial 1.
+
     await poolReal.request().query(`
       IF NOT EXISTS (
         SELECT * FROM sys.columns
@@ -92,11 +107,16 @@ async function inicializarBaseDeDatos() {
       END
     `);
 
-    // 5.1 Rellenamos 'parcial' en los alumnos que quedaron en NULL.
-    //     (Al agregar una columna nullable con DEFAULT, SQL Server deja las filas
-    //      existentes en NULL salvo que se use WITH VALUES; esto lo corrige.)
     await poolReal.request().query(`
       UPDATE estudiantes SET parcial = 1 WHERE parcial IS NULL;
+    `);
+
+    await poolReal.request().query(`
+      INSERT INTO materias (Nombre_Materia)
+      SELECT DISTINCT asignatura
+      FROM estudiantes
+      WHERE asignatura IS NOT NULL AND LTRIM(RTRIM(asignatura)) <> ''
+        AND asignatura NOT IN (SELECT Nombre_Materia FROM materias);
     `);
 
     console.log('📚 Tablas verificadas/creadas correctamente en SQL Server.');
@@ -108,7 +128,6 @@ async function inicializarBaseDeDatos() {
   }
 }
 
-// Inicializamos la promesa de exportación
 const poolPromise = inicializarBaseDeDatos();
 
 module.exports = {
