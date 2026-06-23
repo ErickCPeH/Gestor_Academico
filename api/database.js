@@ -1,11 +1,14 @@
 require('dotenv').config();
 const sql = require('mssql');
 
+// 🎯 CONFIGURACIÓN BASE. Apunta a 'master' para el arranque (bootstrap),
+//    porque master es una base del sistema que SIEMPRE existe y nos permite
+//    crear GestionAcademicaUVM si Docker la borró con un "down -v".
 const config = {
   user: 'sa',
   password: process.env.DB_PASSWORD || "TuPasswordSeguroUVM2026#",
   server: process.env.DB_HOST || 'sqlserver',
-  database: 'master', 
+  database: 'master', // Conexión INICIAL al sistema, solo para poder crear la BD del proyecto
   options: {
     encrypt: false,
     trustServerCertificate: true,
@@ -17,9 +20,12 @@ const config = {
   }
 };
 
+// Nombre de la base de datos real del proyecto
 const DB_NAME = 'GestionAcademicaUVM';
 
-
+// 🔁 Intenta conectarse varias veces antes de rendirse.
+//    SQL Server tarda en estar listo al arrancar; sin esto, el backend se
+//    moriría al primer fallo (race condition del docker compose up).
 async function conectarConReintentos(cfg, intentos = 15, esperaMs = 4000) {
   for (let i = 1; i <= intentos; i++) {
     try {
@@ -37,10 +43,12 @@ async function conectarConReintentos(cfg, intentos = 15, esperaMs = 4000) {
 
 async function inicializarBaseDeDatos() {
   try {
+    // 1. Conexión inicial a 'master' (con reintentos por si SQL aún no está listo)
     const pool = await conectarConReintentos(config);
     console.log('🔌 Conectado temporalmente a master para verificar el entorno...');
 
-
+    // 2. Crear la base de datos del proyecto si no existe
+    //    (cubre el caso del contenedor virgen tras un "docker compose down -v")
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '${DB_NAME}')
       BEGIN
@@ -48,12 +56,14 @@ async function inicializarBaseDeDatos() {
       END
     `);
 
+    // 3. Cerrar la conexión temporal y reconectar ya a la base real del proyecto
     await pool.close();
 
     const configReal = { ...config, database: DB_NAME };
     const poolReal = await conectarConReintentos(configReal);
     console.log(`✅ ¡Conexión exitosa y estable con la base de datos: [${DB_NAME}]!`);
 
+    // 4. Crear tablas esenciales si la base está vacía
     await poolReal.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Usuarios]') AND type in (N'U'))
       BEGIN
@@ -96,7 +106,8 @@ async function inicializarBaseDeDatos() {
       END
     `);
 
-
+    // 5. MIGRACIÓN: si la tabla 'estudiantes' YA existía sin la columna 'parcial',
+    //    la agregamos sin borrar los datos. Los alumnos actuales quedan en el Parcial 1.
     await poolReal.request().query(`
       IF NOT EXISTS (
         SELECT * FROM sys.columns
@@ -107,10 +118,15 @@ async function inicializarBaseDeDatos() {
       END
     `);
 
+    // 5.1 Rellenamos 'parcial' en los alumnos que quedaron en NULL.
+    //     (Al agregar una columna nullable con DEFAULT, SQL Server deja las filas
+    //      existentes en NULL salvo que se use WITH VALUES; esto lo corrige.)
     await poolReal.request().query(`
       UPDATE estudiantes SET parcial = 1 WHERE parcial IS NULL;
     `);
 
+    // 5.2 Sembramos en 'materias' los nombres de asignatura que ya usan los alumnos,
+    //     para que el menú no aparezca vacío la primera vez. (Idempotente.)
     await poolReal.request().query(`
       INSERT INTO materias (Nombre_Materia)
       SELECT DISTINCT asignatura
@@ -128,6 +144,7 @@ async function inicializarBaseDeDatos() {
   }
 }
 
+// Inicializamos la promesa de exportación
 const poolPromise = inicializarBaseDeDatos();
 
 module.exports = {

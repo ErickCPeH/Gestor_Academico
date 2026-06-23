@@ -1,10 +1,10 @@
 // src/services/api.ts
 
-const API_URL = '/api/login'; // Asegúrate de que tu backend corra en este puerto
+const API_URL = '/api'; // Asegúrate de que tu backend corra en este puerto
 
 // Para pruebas, pega aquí un token generado con tu script generate-token.js
 // Más adelante, esto se tomará del Login.
-const TEMP_TOKEN = "PEGA_TU_TOKEN_JWT_AQUI"; 
+const TEMP_TOKEN = "PEGA_TU_TOKEN_JWT_AQUI";
 
 export const apiService = {
   getAllStudents: async () => {

@@ -1,9 +1,8 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
 import {
-  LayoutDashboard,
   Users,
   GraduationCap,
-  Settings,
+  User,
   LogOut,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -12,20 +11,24 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-const handleLogout = () => {
+  const handleLogout = () => {
     localStorage.removeItem("token"); // Borra el token de acceso por seguridad
+    localStorage.removeItem("username"); // Limpiamos también el usuario guardado
     navigate("/login");
   };
 
-const navItems = [
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/dashboard/students", icon: Users, label: "Estudiantes" }, // ← esta línea es la nueva
-  { path: "/dashboard/grades", icon: GraduationCap, label: "Calificaciones" },
-];
+  const navItems = [
+    { path: "/dashboard", icon: Users, label: "Estudiantes" },
+    { path: "/dashboard/grades", icon: GraduationCap, label: "Materias y Calificaciones" },
+    { path: "/dashboard/information", icon: User, label: "Información" },
+  ];
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
-      return location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+      return (
+        location.pathname === "/dashboard" ||
+        location.pathname === "/dashboard/"
+      );
     }
     return location.pathname === path;
   };
