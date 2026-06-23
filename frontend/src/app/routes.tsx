@@ -3,17 +3,17 @@ import { Login } from "./pages/Login";
 import { DashboardLayout } from "./pages/DashboardLayout";
 import { Students } from "./pages/Students";
 import { Grades } from "./pages/Grades";
-import { Settings } from "./pages/Settings";
+import { Information } from "./pages/Information";
 
 /**
  * UVM Gestión Académica - Routing Configuration
- * 
- * Routes:
- * - /login - Authentication page
- * - /dashboard - Main student management interface
- * - /students - Student list (same as dashboard)
- * - /grades - Grades management (placeholder)
- * - /settings - System settings (placeholder)
+ *
+ * Rutas:
+ * - /login                  - Autenticación
+ * - /dashboard              - Estudiantes (vista principal)
+ * - /dashboard/students     - Estudiantes
+ * - /dashboard/grades       - Materias y Calificaciones
+ * - /dashboard/information  - Información de la cuenta
  */
 export const router = createBrowserRouter([
   {
@@ -33,16 +33,18 @@ export const router = createBrowserRouter([
         Component: Students,
       },
       {
+        // Antes /dashboard/students mostraba lo mismo que /dashboard.
+        // Lo dejamos como redirección para no romper enlaces viejos.
         path: "students",
-        Component: Students,
+        element: <Navigate to="/dashboard" replace />,
       },
       {
         path: "grades",
         Component: Grades,
       },
       {
-        path: "settings",
-        Component: Settings,
+        path: "information",
+        Component: Information,
       },
     ],
   },

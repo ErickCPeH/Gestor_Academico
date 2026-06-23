@@ -23,10 +23,28 @@ const config = {
 // Nombre de la base de datos real del proyecto
 const DB_NAME = 'GestionAcademicaUVM';
 
+// 🔁 Intenta conectarse varias veces antes de rendirse.
+//    SQL Server tarda en estar listo al arrancar; sin esto, el backend se
+//    moriría al primer fallo (race condition del docker compose up).
+async function conectarConReintentos(cfg, intentos = 15, esperaMs = 4000) {
+  for (let i = 1; i <= intentos; i++) {
+    try {
+      const pool = await new sql.ConnectionPool(cfg).connect();
+      return pool;
+    } catch (err) {
+      console.log(
+        `⏳ SQL Server aún no está listo (intento ${i}/${intentos}): ${err.message}. Reintentando en ${esperaMs / 1000}s...`
+      );
+      if (i === intentos) throw err;
+      await new Promise((resolve) => setTimeout(resolve, esperaMs));
+    }
+  }
+}
+
 async function inicializarBaseDeDatos() {
   try {
-    // 1. Conexión inicial a 'master' (el trampolín del sistema)
-    const pool = await new sql.ConnectionPool(config).connect();
+    // 1. Conexión inicial a 'master' (con reintentos por si SQL aún no está listo)
+    const pool = await conectarConReintentos(config);
     console.log('🔌 Conectado temporalmente a master para verificar el entorno...');
 
     // 2. Crear la base de datos del proyecto si no existe
@@ -42,7 +60,7 @@ async function inicializarBaseDeDatos() {
     await pool.close();
 
     const configReal = { ...config, database: DB_NAME };
-    const poolReal = await new sql.ConnectionPool(configReal).connect();
+    const poolReal = await conectarConReintentos(configReal);
     console.log(`✅ ¡Conexión exitosa y estable con la base de datos: [${DB_NAME}]!`);
 
     // 4. Crear tablas esenciales si la base está vacía
@@ -78,6 +96,14 @@ async function inicializarBaseDeDatos() {
           estatus VARCHAR(30) DEFAULT 'Regular'
         );
       END
+
+      IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[materias]') AND type in (N'U'))
+      BEGIN
+        CREATE TABLE materias (
+          id_materia INT IDENTITY(1,1) PRIMARY KEY,
+          Nombre_Materia VARCHAR(100) NOT NULL UNIQUE
+        );
+      END
     `);
 
     // 5. MIGRACIÓN: si la tabla 'estudiantes' YA existía sin la columna 'parcial',
@@ -97,6 +123,16 @@ async function inicializarBaseDeDatos() {
     //      existentes en NULL salvo que se use WITH VALUES; esto lo corrige.)
     await poolReal.request().query(`
       UPDATE estudiantes SET parcial = 1 WHERE parcial IS NULL;
+    `);
+
+    // 5.2 Sembramos en 'materias' los nombres de asignatura que ya usan los alumnos,
+    //     para que el menú no aparezca vacío la primera vez. (Idempotente.)
+    await poolReal.request().query(`
+      INSERT INTO materias (Nombre_Materia)
+      SELECT DISTINCT asignatura
+      FROM estudiantes
+      WHERE asignatura IS NOT NULL AND LTRIM(RTRIM(asignatura)) <> ''
+        AND asignatura NOT IN (SELECT Nombre_Materia FROM materias);
     `);
 
     console.log('📚 Tablas verificadas/creadas correctamente en SQL Server.');

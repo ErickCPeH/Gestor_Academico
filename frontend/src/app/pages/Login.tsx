@@ -23,6 +23,13 @@ export function Login() {
         body: JSON.stringify({ usuario: username, password: password }),
       });
 
+      // Si el servidor no devolvió JSON (p. ej. el backend está caído y nginx
+      // responde con HTML), damos un mensaje claro en vez del críptico "Unexpected token '<'"
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.");
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Credenciales inválidas');
@@ -30,6 +37,7 @@ export function Login() {
 
       const data = await response.json();
       localStorage.setItem('token', data.token);
+      localStorage.setItem('username', username); // Guardamos el usuario para la página de Información
       navigate("/dashboard");
     } catch (error: any) {
       alert("Error de Autenticación: " + error.message);
